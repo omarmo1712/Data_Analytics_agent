@@ -15,7 +15,7 @@ LLM_MAX_NEW_TOKENS        = 2048
 
 # --- FastAPI ---
 API_HOST = "0.0.0.0"
-API_PORT = 8000
+API_PORT = 8889
 
 # --- Streamlit ---
 STREAMLIT_PAGE_TITLE = "Home Credit Analytics Agent"

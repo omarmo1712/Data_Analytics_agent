@@ -167,6 +167,7 @@ def execute_code(code: str) -> tuple[str, str | None]:
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest):
     question = request.question.strip()
+    print(f"Received question: {question}")git 
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
