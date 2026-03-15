@@ -21,6 +21,7 @@ from utils import (
     build_llm_messages,
     generate_text,
     extract_code_block,
+    validate_code_syntax,
     execute_code,
 )
 
@@ -80,32 +81,45 @@ async def analyze(request: AnalyzeRequest):
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
-    # Step 1: Qwen Coder → Python code
+    # Step 1: Qwen Coder → Python code (greedy = deterministic, fewer random errors)
     prog_messages = build_programmer_messages(question)
     coder_response = generate_text(
         _state["prog_tokenizer"],
         _state["prog_model"],
         prog_messages,
         PROGRAMMER_MAX_NEW_TOKENS,
+        greedy=True,
     )
     code = extract_code_block(coder_response)
 
-    # Step 2: Execute code; retry with Qwen Coder if execution fails
-    stdout_text, chart_b64 = execute_code(code)
+    # Step 2: Syntax check → execute → retry loop on any error
+    def _has_error(text: str) -> bool:
+        return "Traceback" in text or "Error" in text
+
+    syntax_ok, syntax_err = validate_code_syntax(code)
+    if not syntax_ok:
+        stdout_text, chart_b64 = syntax_err, None
+    else:
+        stdout_text, chart_b64 = execute_code(code)
 
     for attempt in range(MAX_FIX_RETRIES):
-        if "Traceback" not in stdout_text and "Error" not in stdout_text:
+        if not _has_error(stdout_text):
             break
-        print(f"Code execution failed (attempt {attempt + 1}/{MAX_FIX_RETRIES}), sending back to Qwen Coder for fix...")
+        print(f"Code failed (attempt {attempt + 1}/{MAX_FIX_RETRIES}): sending back to Qwen Coder...")
         fix_messages = build_fix_messages(question, code, stdout_text)
         fix_response = generate_text(
             _state["prog_tokenizer"],
             _state["prog_model"],
             fix_messages,
             PROGRAMMER_MAX_NEW_TOKENS,
+            greedy=True,
         )
         code = extract_code_block(fix_response)
-        stdout_text, chart_b64 = execute_code(code)
+        syntax_ok, syntax_err = validate_code_syntax(code)
+        if not syntax_ok:
+            stdout_text, chart_b64 = syntax_err, None
+        else:
+            stdout_text, chart_b64 = execute_code(code)
 
     # Step 3: Qwen3 → natural language answer
     output_for_llm = stdout_text

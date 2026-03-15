@@ -3,8 +3,8 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # --- Model identifiers ---
-PROGRAMMER_MODEL_NAME = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
-LLM_MODEL_NAME        = "Qwen/Qwen3-4B-Instruct-2507"
+PROGRAMMER_MODEL_NAME = "Qwen/Qwen2.5-Coder-7B-Instruct"
+LLM_MODEL_NAME        = "Qwen/Qwen3.5-4B" #"Qwen/Qwen3-4B-Instruct-2507"
 
 # --- Dataset ---
 DATA_PATH = os.path.join(BASE_DIR, "data", "application_train.csv")

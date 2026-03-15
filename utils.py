@@ -1,3 +1,4 @@
+import ast
 import re
 import io
 import sys
@@ -52,10 +53,14 @@ def build_llm_messages(user_question: str, code_output: str) -> list:
 
 # ── LLM inference ──────────────────────────────────────────────────────────
 
-def generate_text(tokenizer, model, messages: list, max_new_tokens: int) -> str:
+def generate_text(tokenizer, model, messages: list, max_new_tokens: int,
+                  greedy: bool = False) -> str:
     """
     Applies chat template, runs model.generate(), slices off input tokens,
     and batch_decodes. Mirrors the pattern from test.ipynb.
+
+    greedy=True uses do_sample=False for deterministic output (recommended
+    for code generation to reduce random errors).
     """
     text = tokenizer.apply_chat_template(
         messages,
@@ -64,11 +69,12 @@ def generate_text(tokenizer, model, messages: list, max_new_tokens: int) -> str:
     )
     model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
+    gen_kwargs = {"max_new_tokens": max_new_tokens}
+    if greedy:
+        gen_kwargs["do_sample"] = False
+
     with torch.no_grad():
-        generated_ids = model.generate(
-            **model_inputs,
-            max_new_tokens=max_new_tokens,
-        )
+        generated_ids = model.generate(**model_inputs, **gen_kwargs)
 
     # Slice off the prompt tokens
     trimmed = [
@@ -92,6 +98,20 @@ def extract_code_block(model_response: str) -> str:
     fallback = re.sub(r"```[a-z]*\s*", "", model_response)
     fallback = fallback.replace("```", "")
     return fallback.strip()
+
+
+# ── Syntax validation ──────────────────────────────────────────────────────
+
+def validate_code_syntax(code: str) -> tuple[bool, str]:
+    """
+    Parse code with ast.parse() to catch syntax errors before execution.
+    Returns (is_valid, error_message).
+    """
+    try:
+        ast.parse(code)
+        return True, ""
+    except SyntaxError as e:
+        return False, f"SyntaxError at line {e.lineno}: {e.msg}\n  {e.text}"
 
 
 # ── Code execution ─────────────────────────────────────────────────────────
