@@ -13,9 +13,11 @@ from config import (
     LLM_MAX_NEW_TOKENS,
     API_HOST,
     API_PORT,
+    MAX_FIX_RETRIES,
 )
 from utils import (
     build_programmer_messages,
+    build_fix_messages,
     build_llm_messages,
     generate_text,
     extract_code_block,
@@ -88,8 +90,22 @@ async def analyze(request: AnalyzeRequest):
     )
     code = extract_code_block(coder_response)
 
-    # Step 2: Execute code → stdout + optional chart
+    # Step 2: Execute code; retry with Qwen Coder if execution fails
     stdout_text, chart_b64 = execute_code(code)
+
+    for attempt in range(MAX_FIX_RETRIES):
+        if "Traceback" not in stdout_text and "Error" not in stdout_text:
+            break
+        print(f"Code execution failed (attempt {attempt + 1}/{MAX_FIX_RETRIES}), sending back to Qwen Coder for fix...")
+        fix_messages = build_fix_messages(question, code, stdout_text)
+        fix_response = generate_text(
+            _state["prog_tokenizer"],
+            _state["prog_model"],
+            fix_messages,
+            PROGRAMMER_MAX_NEW_TOKENS,
+        )
+        code = extract_code_block(fix_response)
+        stdout_text, chart_b64 = execute_code(code)
 
     # Step 3: Qwen3 → natural language answer
     output_for_llm = stdout_text

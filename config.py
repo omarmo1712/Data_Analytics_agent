@@ -13,6 +13,9 @@ DATA_PATH = os.path.join(BASE_DIR, "data", "application_train.csv")
 PROGRAMMER_MAX_NEW_TOKENS = 512
 LLM_MAX_NEW_TOKENS        = 2048
 
+# --- Code fix retries ---
+MAX_FIX_RETRIES = 2  # max times to send broken code back to Qwen Coder for fixing
+
 # --- FastAPI ---
 API_HOST = "0.0.0.0"
 API_PORT = 8889

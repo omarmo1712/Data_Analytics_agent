@@ -23,6 +23,21 @@ def build_programmer_messages(user_question: str) -> list:
     ]
 
 
+def build_fix_messages(user_question: str, broken_code: str, error: str) -> list:
+    """Return messages asking Qwen Coder to fix code that raised an error."""
+    user_content = (
+        f"The following Python code was generated to answer this question:\n"
+        f"Question: {user_question}\n\n"
+        f"```python\n{broken_code}\n```\n\n"
+        f"It failed with this error:\n{error}\n\n"
+        f"Please fix the code so it runs correctly. Output only the corrected ```python ... ``` block."
+    )
+    return [
+        {"role": "system", "content": PROGRAMMER_SYSTEM_PROMPT},
+        {"role": "user",   "content": user_content},
+    ]
+
+
 def build_llm_messages(user_question: str, code_output: str) -> list:
     """Return the messages list for Qwen3 interpretation."""
     user_content = (
