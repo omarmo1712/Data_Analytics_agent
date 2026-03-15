@@ -1,4 +1,3 @@
-import ast
 import re
 import io
 import sys
@@ -72,6 +71,9 @@ def generate_text(tokenizer, model, messages: list, max_new_tokens: int,
     gen_kwargs = {"max_new_tokens": max_new_tokens}
     if greedy:
         gen_kwargs["do_sample"] = False
+        gen_kwargs["temperature"] = None
+        gen_kwargs["top_p"] = None
+        gen_kwargs["top_k"] = None
 
     with torch.no_grad():
         generated_ids = model.generate(**model_inputs, **gen_kwargs)
@@ -98,20 +100,6 @@ def extract_code_block(model_response: str) -> str:
     fallback = re.sub(r"```[a-z]*\s*", "", model_response)
     fallback = fallback.replace("```", "")
     return fallback.strip()
-
-
-# ── Syntax validation ──────────────────────────────────────────────────────
-
-def validate_code_syntax(code: str) -> tuple[bool, str]:
-    """
-    Parse code with ast.parse() to catch syntax errors before execution.
-    Returns (is_valid, error_message).
-    """
-    try:
-        ast.parse(code)
-        return True, ""
-    except SyntaxError as e:
-        return False, f"SyntaxError at line {e.lineno}: {e.msg}\n  {e.text}"
 
 
 # ── Code execution ─────────────────────────────────────────────────────────

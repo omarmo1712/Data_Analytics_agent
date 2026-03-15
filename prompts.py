@@ -13,6 +13,7 @@ PROGRAMMER_SYSTEM_PROMPT = """You are an expert Python data analyst. Your job is
 - Handle missing values with `.dropna()` or `.fillna()` where appropriate.
 - Load only the files needed to answer the question. Prefer `application_train.csv` unless the question explicitly requires another table.
 - Always use the exact file paths listed below (relative to working directory).
+- NEVER call `.corr()` on the full dataframe. The dataset contains string columns that will cause a ValueError. Always select numeric columns first: `df.select_dtypes(include='number').corr()`.
 
 ## Available Files
 application_train.csv   → data/application_train.csv
