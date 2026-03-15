@@ -149,23 +149,3 @@ Your job is to provide a clear, concise, natural-language answer to the user's q
 """
 
 
-# ── Message builders ───────────────────────────────────────────────────────
-
-def build_programmer_messages(user_question: str) -> list:
-    """Return the messages list for Qwen Coder."""
-    return [
-        {"role": "system", "content": PROGRAMMER_SYSTEM_PROMPT},
-        {"role": "user",   "content": user_question},
-    ]
-
-
-def build_llm_messages(user_question: str, code_output: str) -> list:
-    """Return the messages list for Qwen3 interpretation."""
-    user_content = (
-        f"User question: {user_question}\n\n"
-        f"Code execution output:\n{code_output}"
-    )
-    return [
-        {"role": "system", "content": LLM_SYSTEM_PROMPT},
-        {"role": "user",   "content": user_content},
-    ]
