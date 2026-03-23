@@ -132,6 +132,7 @@ def execute_code(code: str) -> tuple[str, str | None]:
     chart_b64 = None
 
     try:
+        plt.rcParams["figure.figsize"] = (10, 5)
         exec(code, exec_globals)  # noqa: S102
 
         if plt.get_fignums():

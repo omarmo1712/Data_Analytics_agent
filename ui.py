@@ -30,7 +30,7 @@ if "messages" not in st.session_state:
 def display_base64_image(b64_string: str):
     """Decode a base64 PNG and render it in Streamlit."""
     image_bytes = base64.b64decode(b64_string)
-    st.image(image_bytes, use_container_width=True)
+    st.image(image_bytes, use_container_width=False)
 
 
 def call_api(question: str) -> dict:
@@ -99,7 +99,7 @@ if prompt := st.chat_input("Ask a question about the Home Credit dataset..."):
 
     # 2. Call API and render response
     with st.chat_message("assistant"):
-        with st.spinner("Analyzing... (this may take 30–90 seconds)"):
+        with st.spinner("Analyzing..."):
             result = call_api(prompt)
 
         answer    = result.get("answer", "No answer returned.")
