@@ -7,17 +7,17 @@ import streamlit as st
 
 from config import STREAMLIT_API_URL, STREAMLIT_PAGE_TITLE
 
-# ── Page config ────────────────────────────────────────────────────────────
+# Page config
 
 st.set_page_config(
     page_title=STREAMLIT_PAGE_TITLE,
-    page_icon="📊",
+    page_icon="",
     layout="wide",
 )
 st.title(STREAMLIT_PAGE_TITLE)
 st.caption("Powered by Qwen2.5-Coder + Qwen3 | Home Credit Default Risk Dataset")
 
-# ── Session state ──────────────────────────────────────────────────────────
+# Session state
 
 # Each message: {"role": "user"|"assistant", "content": str,
 #                "chart_base64": str|None, "code": str|None}
@@ -25,7 +25,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────
+# Helpers
 
 def display_base64_image(b64_string: str):
     """Decode a base64 PNG and render it in Streamlit."""
@@ -81,7 +81,7 @@ def render_chat_history():
                     st.code(msg["code"], language="python")
 
 
-# ── Main interaction loop ──────────────────────────────────────────────────
+# Main interaction loop
 
 render_chat_history()
 

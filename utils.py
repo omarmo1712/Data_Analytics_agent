@@ -13,7 +13,7 @@ import torch
 from prompts import PROGRAMMER_SYSTEM_PROMPT, LLM_SYSTEM_PROMPT
 
 
-# ── Message builders ───────────────────────────────────────────────────────
+# Message builders 
 
 def build_programmer_messages(user_question: str) -> list:
     """Return the messages list for Qwen Coder."""
@@ -50,7 +50,7 @@ def build_llm_messages(user_question: str, code_output: str) -> list:
     ]
 
 
-# ── LLM inference ──────────────────────────────────────────────────────────
+# LLM inference 
 
 def generate_text(tokenizer, model, messages: list, max_new_tokens: int,
                   greedy: bool = False) -> str:
@@ -87,7 +87,7 @@ def generate_text(tokenizer, model, messages: list, max_new_tokens: int,
     return tokenizer.batch_decode(trimmed, skip_special_tokens=True)[0]
 
 
-# ── Code extraction ────────────────────────────────────────────────────────
+# Code extraction 
 
 def extract_code_block(model_response: str) -> str:
     """
@@ -102,7 +102,7 @@ def extract_code_block(model_response: str) -> str:
     return fallback.strip()
 
 
-# ── Code execution ─────────────────────────────────────────────────────────
+# Code execution 
 
 def execute_code(code: str) -> tuple[str, str | None]:
     """

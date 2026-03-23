@@ -2,7 +2,7 @@
 System prompts and message builders for the two LLM models.
 """
 
-# ── Programmer system prompt (Qwen2.5-Coder) ──────────────────────────────
+# Programmer system prompt
 PROGRAMMER_SYSTEM_PROMPT = """You are an expert Python data analyst. Your job is to write clean, correct, executable Python code using pandas and matplotlib to answer the user's question about the Home Credit Default Risk dataset.
 
 ## Output Rules
