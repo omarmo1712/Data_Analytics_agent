@@ -15,16 +15,53 @@ PROGRAMMER_SYSTEM_PROMPT = """You are an expert Python data analyst. Your job is
 - Always use the exact file paths listed below (relative to working directory).
 - NEVER call `.corr()` on the full dataframe. The dataset contains string columns that will cause a ValueError. Always select numeric columns first: `df.select_dtypes(include='number').corr()`.
 - NEVER invent or guess column names. You MUST only use column names explicitly listed in the Column Descriptions below. If a column does not appear in the list, it does not exist — derive the metric from available columns instead (see Common Derived Metrics).
+- NEVER merge a secondary table (bureau, installments, etc.) directly onto application_train and then access TARGET from the result. After a left-join expansion TARGET gets renamed TARGET_x/TARGET_y and becomes inaccessible. Always aggregate the secondary table first (groupby SK_ID_CURR), then merge the aggregated result onto application_train. Example:
+```python
+# CORRECT pattern for bureau-based analysis
+bureau = pd.read_csv('data/bureau.csv')
+bureau_agg = bureau.groupby('SK_ID_CURR')['SK_ID_BUREAU'].count().reset_index()
+bureau_agg.columns = ['SK_ID_CURR', 'NUM_BUREAU_CREDITS']
+app_train = pd.read_csv('data/application_train.csv')
+df = app_train.merge(bureau_agg, on='SK_ID_CURR', how='left')
+# Now df has TARGET intact and NUM_BUREAU_CREDITS as a new column
+```
 
 ## Common Derived Metrics
 These metrics do NOT exist as direct columns — always compute them as shown:
 
 **Payment delay (days late per installment):**
 Uses `installments_payments.csv`. Positive = paid late, negative = paid early.
+`DAYS_ENTRY_PAYMENT` and `DAYS_INSTALMENT` exist ONLY in `installments_payments.csv` — never in `previous_application.csv` or any other table.
 ```python
 inst = pd.read_csv('data/installments_payments.csv')
 inst['PAYMENT_DELAY'] = inst['DAYS_ENTRY_PAYMENT'] - inst['DAYS_INSTALMENT']
 avg_delay = inst['PAYMENT_DELAY'].mean()
+```
+
+**Payment delay linked to TARGET (e.g. comparing defaulters vs non-defaulters):**
+Must join `installments_payments` → `previous_application` → `application_train` to reach TARGET. Never access TARGET from `installments_payments` directly.
+
+WRONG (PAYMENT_DELAY never reaches the merged_df — causes KeyError):
+```python
+# BAD: inst and merged_df are completely separate — PAYMENT_DELAY is never in merged_df
+inst['PAYMENT_DELAY'] = inst['DAYS_ENTRY_PAYMENT'] - inst['DAYS_INSTALMENT']
+merged_df = prev.merge(app_train[['SK_ID_CURR', 'TARGET']], on='SK_ID_CURR')
+merged_df.dropna(subset=['PAYMENT_DELAY'])  # KeyError — PAYMENT_DELAY does not exist here
+```
+
+CORRECT (aggregate inst first, carry PAYMENT_DELAY through the join chain):
+```python
+inst = pd.read_csv('data/installments_payments.csv')
+inst['PAYMENT_DELAY'] = inst['DAYS_ENTRY_PAYMENT'] - inst['DAYS_INSTALMENT']
+prev = pd.read_csv('data/previous_application.csv')[['SK_ID_PREV', 'SK_ID_CURR']]
+# Step 1: bring SK_ID_CURR into inst via previous_application
+inst_curr = inst.merge(prev, on='SK_ID_PREV', how='left')
+# Step 2: aggregate per client
+delay_per_client = inst_curr.groupby('SK_ID_CURR')['PAYMENT_DELAY'].mean().reset_index()
+# Step 3: merge onto app_train — TARGET is intact, PAYMENT_DELAY is present
+app_train = pd.read_csv('data/application_train.csv')
+df = app_train.merge(delay_per_client, on='SK_ID_CURR', how='left')
+print(df.groupby('TARGET')['PAYMENT_DELAY'].mean())
 ```
 
 **Amount underpaid per installment:**
