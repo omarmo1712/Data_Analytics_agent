@@ -1,3 +1,4 @@
+# streamlit run ui.py
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -15,7 +16,6 @@ st.set_page_config(
     layout="wide",
 )
 st.title(STREAMLIT_PAGE_TITLE)
-st.caption("Powered by Qwen2.5-Coder + Qwen3 | Home Credit Default Risk Dataset")
 
 # Session state
 
