@@ -24,12 +24,11 @@ from utils import (
     execute_code,
 )
 
-# Module-level state — populated once at startup
+# Module-level state 
 _state: dict = {}
 
 
-# ── Pydantic schemas ───────────────────────────────────────────────────────
-
+# Pydantic schemas
 class AnalyzeRequest(BaseModel):
     question: str
 
@@ -40,8 +39,7 @@ class AnalyzeResponse(BaseModel):
     generated_code: str | None = None
 
 
-# ── Lifespan (model loading) ───────────────────────────────────────────────
-
+# Lifespan (model loading)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Loading Programmer model (Qwen Coder)...")
@@ -61,7 +59,7 @@ async def lifespan(app: FastAPI):
     )
 
     print("Both models loaded. API ready.")
-    yield
+    yield #Everything before yield = startup. Everything after yield = shutdown.
 
     _state.clear()
     if torch.cuda.is_available():
@@ -71,7 +69,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Data Analytics Agent", lifespan=lifespan)
 
 
-# ── Endpoint ───────────────────────────────────────────────────────────────
+# Endpoint
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest):
@@ -80,18 +78,18 @@ async def analyze(request: AnalyzeRequest):
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
-    # Step 1: Qwen Coder → Python code (greedy = deterministic, fewer random errors)
+    # Step 1: code generation with Qwen Coder
     prog_messages = build_programmer_messages(question)
     coder_response = generate_text(
         _state["prog_tokenizer"],
         _state["prog_model"],
         prog_messages,
         PROGRAMMER_MAX_NEW_TOKENS,
-        greedy=True,
+        greedy=True, #always picking the most probable next word when generating text
     )
     code = extract_code_block(coder_response)
 
-    # Step 2: Execute code → retry loop on any error
+    # Step 2: Execute code 
     def _has_error(text: str) -> bool:
         return "Traceback" in text or "Error" in text
 
@@ -114,7 +112,7 @@ async def analyze(request: AnalyzeRequest):
         code = extract_code_block(fix_response)
         stdout_text, chart_b64 = execute_code(code)
 
-    # Step 3: Qwen3 → natural language answer
+    # Step 3: generate natural language answer
     output_for_llm = stdout_text
     if chart_b64:
         output_for_llm += "\n[A matplotlib chart was also generated and will be shown to the user.]"
@@ -137,8 +135,7 @@ async def analyze(request: AnalyzeRequest):
     )
 
 
-# ── Entry point ────────────────────────────────────────────────────────────
-
+# Entry point
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api:app", host=API_HOST, port=API_PORT, reload=False)
