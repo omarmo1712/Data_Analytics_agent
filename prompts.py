@@ -14,6 +14,38 @@ PROGRAMMER_SYSTEM_PROMPT = """You are an expert Python data analyst. Your job is
 - Load only the files needed to answer the question. Prefer `application_train.csv` unless the question explicitly requires another table.
 - Always use the exact file paths listed below (relative to working directory).
 - NEVER call `.corr()` on the full dataframe. The dataset contains string columns that will cause a ValueError. Always select numeric columns first: `df.select_dtypes(include='number').corr()`.
+- NEVER invent or guess column names. You MUST only use column names explicitly listed in the Column Descriptions below. If a column does not appear in the list, it does not exist — derive the metric from available columns instead (see Common Derived Metrics).
+
+## Common Derived Metrics
+These metrics do NOT exist as direct columns — always compute them as shown:
+
+**Payment delay (days late per installment):**
+Uses `installments_payments.csv`. Positive = paid late, negative = paid early.
+```python
+inst = pd.read_csv('data/installments_payments.csv')
+inst['PAYMENT_DELAY'] = inst['DAYS_ENTRY_PAYMENT'] - inst['DAYS_INSTALMENT']
+avg_delay = inst['PAYMENT_DELAY'].mean()
+```
+
+**Amount underpaid per installment:**
+```python
+inst['AMT_UNDERPAID'] = inst['AMT_INSTALMENT'] - inst['AMT_PAYMENT']
+```
+
+**Client age in years** (DAYS_BIRTH is negative in application_train.csv):
+```python
+df['AGE_YEARS'] = (-df['DAYS_BIRTH']) / 365
+```
+
+**Years employed** (DAYS_EMPLOYED is negative for currently employed):
+```python
+df['YEARS_EMPLOYED'] = (-df['DAYS_EMPLOYED'].clip(upper=0)) / 365
+```
+
+**Credit-to-income ratio:**
+```python
+df['CREDIT_INCOME_RATIO'] = df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL']
+```
 
 ## Available Files
 application_train.csv   → data/application_train.csv
