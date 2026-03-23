@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore")
+
 import base64
 import requests
 import streamlit as st
@@ -27,7 +30,7 @@ if "messages" not in st.session_state:
 def display_base64_image(b64_string: str):
     """Decode a base64 PNG and render it in Streamlit."""
     image_bytes = base64.b64decode(b64_string)
-    st.image(image_bytes, use_column_width=True)
+    st.image(image_bytes, use_container_width=True)
 
 
 def call_api(question: str) -> dict:

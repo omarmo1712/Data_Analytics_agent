@@ -1,13 +1,5 @@
 import re
-import io
-import sys
-import base64
-import traceback
 from contextlib import asynccontextmanager
-
-import matplotlib
-matplotlib.use("Agg")  # must come before pyplot import
-import matplotlib.pyplot as plt
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -21,8 +13,16 @@ from config import (
     LLM_MAX_NEW_TOKENS,
     API_HOST,
     API_PORT,
+    MAX_FIX_RETRIES,
 )
-from prompts import build_programmer_messages, build_llm_messages
+from utils import (
+    build_programmer_messages,
+    build_fix_messages,
+    build_llm_messages,
+    generate_text,
+    extract_code_block,
+    execute_code,
+)
 
 # Module-level state — populated once at startup
 _state: dict = {}
@@ -71,118 +71,48 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Data Analytics Agent", lifespan=lifespan)
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────
-
-def generate_text(tokenizer, model, messages: list, max_new_tokens: int) -> str:
-    """
-    Applies chat template, runs model.generate(), slices off input tokens,
-    and batch_decodes. Mirrors the pattern from test.ipynb.
-    """
-    text = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
-    )
-    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
-
-    with torch.no_grad():
-        generated_ids = model.generate(
-            **model_inputs,
-            max_new_tokens=max_new_tokens,
-        )
-
-    # Slice off the prompt tokens
-    trimmed = [
-        output_ids[len(input_ids):]
-        for input_ids, output_ids
-        in zip(model_inputs.input_ids, generated_ids)
-    ]
-    return tokenizer.batch_decode(trimmed, skip_special_tokens=True)[0]
-
-
-def extract_code_block(model_response: str) -> str:
-    """
-    Extracts the first ```python ... ``` block from the model response.
-    Falls back to stripping any generic triple-backtick fences.
-    """
-    match = re.search(r"```python\s*(.*?)```", model_response, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    # Fallback: strip generic fences
-    fallback = re.sub(r"```[a-z]*\s*", "", model_response)
-    fallback = fallback.replace("```", "")
-    return fallback.strip()
-
-
-def execute_code(code: str) -> tuple[str, str | None]:
-    """
-    Executes code in a restricted namespace.
-
-    Returns:
-        (stdout_text, chart_base64_or_None)
-
-    - matplotlib Agg backend is already set globally; plt.show() is a no-op.
-    - Captures stdout via io.StringIO redirect.
-    - Saves any open matplotlib figure as a base64 PNG.
-    - Returns tracebacks as stdout_text on exception.
-    """
-    import pandas as pd
-    import numpy as np
-
-    exec_globals = {
-        "__builtins__": __builtins__,
-        "pd": pd,
-        "np": np,
-        "plt": plt,
-        "matplotlib": matplotlib,
-    }
-
-    old_stdout = sys.stdout
-    sys.stdout = io.StringIO()
-    chart_b64 = None
-
-    try:
-        exec(code, exec_globals)  # noqa: S102
-
-        if plt.get_fignums():
-            buf = io.BytesIO()
-            plt.savefig(buf, format="png", bbox_inches="tight")
-            buf.seek(0)
-            chart_b64 = base64.b64encode(buf.read()).decode("utf-8")
-            plt.close("all")
-
-        stdout_text = sys.stdout.getvalue()
-
-    except Exception:
-        stdout_text = traceback.format_exc()
-        plt.close("all")
-    finally:
-        sys.stdout = old_stdout
-
-    return stdout_text or "(no text output)", chart_b64
-
-
 # ── Endpoint ───────────────────────────────────────────────────────────────
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest):
     question = request.question.strip()
-    print(f"Received question: {question}")git 
+    print(f"Received question: {question}")
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
-    # Step 1: Qwen Coder → Python code
+    # Step 1: Qwen Coder → Python code (greedy = deterministic, fewer random errors)
     prog_messages = build_programmer_messages(question)
     coder_response = generate_text(
         _state["prog_tokenizer"],
         _state["prog_model"],
         prog_messages,
         PROGRAMMER_MAX_NEW_TOKENS,
+        greedy=True,
     )
     code = extract_code_block(coder_response)
 
-    # Step 2: Execute code → stdout + optional chart
+    # Step 2: Execute code → retry loop on any error
+    def _has_error(text: str) -> bool:
+        return "Traceback" in text or "Error" in text
+
     stdout_text, chart_b64 = execute_code(code)
+
+    for attempt in range(MAX_FIX_RETRIES):
+        if not _has_error(stdout_text):
+            break
+        print(f"Code failed (attempt {attempt + 1}/{MAX_FIX_RETRIES}): sending back to Qwen Coder...")
+        print(f"Generated code was:\n{code}")
+        print(f"Error was:\n{stdout_text}")
+        fix_messages = build_fix_messages(question, code, stdout_text)
+        fix_response = generate_text(
+            _state["prog_tokenizer"],
+            _state["prog_model"],
+            fix_messages,
+            PROGRAMMER_MAX_NEW_TOKENS,
+            greedy=True,
+        )
+        code = extract_code_block(fix_response)
+        stdout_text, chart_b64 = execute_code(code)
 
     # Step 3: Qwen3 → natural language answer
     output_for_llm = stdout_text
