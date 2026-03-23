@@ -59,7 +59,7 @@ installments_payments.csv→data/installments_payments.csv
 ## Dataset Overview
 application_train.csv: Main table. One row = one loan application. Has TARGET column (1 = default, 0 = no default).
 bureau.csv: Previous credits from other institutions, linked via SK_ID_CURR.
-bureau_balance.csv: Monthly balances of bureau credits, linked via SK_BUREAU_ID.
+bureau_balance.csv: Monthly balances of bureau credits, linked via SK_ID_BUREAU.
 POS_CASH_balance.csv: Monthly POS/cash loan snapshots, linked via SK_ID_PREV and SK_ID_CURR.
 credit_card_balance.csv: Monthly credit card snapshots, linked via SK_ID_PREV and SK_ID_CURR.
 previous_application.csv: Previous Home Credit loan applications, linked via SK_ID_PREV and SK_ID_CURR.
@@ -229,7 +229,7 @@ application_train.csv: AMT_REQ_CREDIT_BUREAU_MON: Number of enquiries to Credit 
 application_train.csv: AMT_REQ_CREDIT_BUREAU_QRT: Number of enquiries to Credit Bureau about the client 3 month before application (excluding one month before application)
 application_train.csv: AMT_REQ_CREDIT_BUREAU_YEAR: Number of enquiries to Credit Bureau about the client one day year (excluding last 3 months before application)
 bureau.csv: SK_ID_CURR: ID of loan in our sample - one loan in our sample can have 0,1,2 or more related previous credits in credit bureau 
-bureau.csv: SK_BUREAU_ID: Recoded ID of previous Credit Bureau credit related to our loan (unique coding for each loan application)
+bureau.csv: SK_ID_BUREAU: Recoded ID of previous Credit Bureau credit related to our loan (unique coding for each loan application)
 bureau.csv: CREDIT_ACTIVE: Status of the Credit Bureau (CB) reported credits
 bureau.csv: CREDIT_CURRENCY: Recoded currency of the Credit Bureau credit
 bureau.csv: DAYS_CREDIT: How many days before current application did client apply for Credit Bureau credit
@@ -245,7 +245,7 @@ bureau.csv: AMT_CREDIT_SUM_OVERDUE: Current amount overdue on Credit Bureau cred
 bureau.csv: CREDIT_TYPE: Type of Credit Bureau credit (Car, cash,...)
 bureau.csv: DAYS_CREDIT_UPDATE: How many days before loan application did last information about the Credit Bureau credit come
 bureau.csv: AMT_ANNUITY: Annuity of the Credit Bureau credit
-bureau_balance.csv: SK_BUREAU_ID: Recoded ID of Credit Bureau credit (unique coding for each application) - use this to join to CREDIT_BUREAU table 
+bureau_balance.csv: SK_ID_BUREAU: Recoded ID of Credit Bureau credit (unique coding for each application) - use this to join to CREDIT_BUREAU table
 bureau_balance.csv: MONTHS_BALANCE: Month of balance relative to application date (-1 means the freshest balance date)
 bureau_balance.csv: STATUS: Status of Credit Bureau loan during the month (active, closed, DPD0-30,… [C means closed, X means status unknown, 0 means no DPD, 1 means maximal did during month between 1-30, 2 means DPD 31-60,… 5 means DPD 120+ or sold or written off ] )
 POS_CASH_balance.csv: SK_ID_PREV : ID of previous credit in Home Credit related to loan in our sample. (One loan in our sample can have 0,1,2 or more previous loans in Home Credit)
