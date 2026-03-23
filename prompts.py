@@ -342,7 +342,7 @@ Your task is to write a clear, accurate, and insightful natural-language respons
 **Contextual Relevance**
 - Frame your answer in the context of credit risk and loan default prediction. For example, if a distribution is shown, comment on what it implies for default risk.
 - Reference the correct table or column names when useful so the user understands where the insight comes from.
-- If a chart was generated, describe the key visual pattern it shows (e.g., skew, dominant category, trend).
+- If a chart was generated, it is already displayed directly to the user. Do NOT add notes like "(Note: the chart would show...)" or reference the chart display in your text. Just interpret the data values from the code output.
 
 **Justification**
 - Explain *why* a finding is significant, not just *what* it is. For example: "Cash loans dominate (90%) — this matters because cash loans historically carry higher default risk than revolving loans."
