@@ -72,6 +72,29 @@ Open the URL shown in the terminal (usually `http://localhost:8501`).
 - What percentage of applicants have active credits in other institutions?
 - What is the default rate of applicants who previously had overdue bureau loans?
 
+## Future Work
+
+### Replace Long-Context Schema with Dynamic Discovery
+Currently the full dataset schema (250+ column names and descriptions) is hardcoded directly into the system prompt, consuming a large number of tokens on every request. Better alternatives:
+
+- **RAG (Retrieval-Augmented Generation)** — embed column descriptions into a vector database (e.g. ChromaDB, FAISS). At query time, retrieve only the columns relevant to the user's question and inject just those into the prompt. Reduces token usage significantly and scales to any dataset.
+- **Tool/function calling** — give the model a `get_schema(table_name)` tool it can call on demand, rather than front-loading the entire schema.
+- **Auto-discovery at startup** — read column names and types directly from CSV headers and `HomeCredit_columns_description.csv` at server startup, generating the prompt dynamically instead of maintaining it by hand.
+
+### Slack / Microsoft Teams Integration
+Deploy the agent as a bot so analysts can query it directly from their communication tools without opening a browser:
+
+**Slack:**
+- Use the Slack Bolt SDK to create a bot that listens for `@mentions` or `/analyze` slash commands
+- Forward the message text to the `/analyze` FastAPI endpoint
+- Post the answer back as a threaded reply; upload the chart as a file attachment
+
+**Microsoft Teams:**
+- Use the Bot Framework SDK or Teams Toolkit to register a bot
+- Handle `message` activity events, call the FastAPI backend, and reply with an Adaptive Card containing the answer and chart image
+
+Both integrations would sit in front of the existing FastAPI backend with no changes to the core pipeline.
+
 ## Configuration
 
 All settings are in `config.py`:
